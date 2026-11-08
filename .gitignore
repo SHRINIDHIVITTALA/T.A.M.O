@@ -1,0 +1,22 @@
+# private notes (not tracked)
+SESSION_NOTES.md
+
+# dependencies / build output
+node_modules/
+dist/
+
+# environment / secrets
+.env
+.env.*
+
+# python
+__pycache__/
+.venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# typescript build cache
+*.tsbuildinfo
