@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  ArrowRight, ArrowUpRight, Cpu, FileText, Gauge, Infinity as InfinityIcon, Layers, Play,
-  Scissors, Search, Sparkles, Split, Zap,
+  ArrowRight, BarChart3, Box, FileText, Infinity as InfinityIcon, Layers, Scissors, Search,
+  Sparkles, Split, Target, Zap,
 } from "lucide-react";
 import { OrbitStage } from "@/components/landing/OrbitStage";
 
@@ -30,7 +30,7 @@ function Logo() {
 
 function Navbar() {
   return (
-    <header className="relative z-40 mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-8">
+    <header className="relative z-40 mx-auto flex h-20 max-w-[1400px] items-center justify-between px-4 sm:px-8">
       <Logo />
       <nav className="hidden items-center gap-1 rounded-full border border-ink/10 bg-white/60 p-1 backdrop-blur md:flex">
         {NAV.map((n) => (
@@ -39,100 +39,71 @@ function Navbar() {
           </a>
         ))}
       </nav>
-      <Link to="/login" className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-ink/85">
-        Try T.A.M.O. <ArrowUpRight className="size-4" />
-      </Link>
+      <SpinningBadge />
     </header>
   );
 }
 
 function SpinningBadge() {
   return (
-    <div className="relative size-24">
+    <div className="relative size-16 shrink-0">
       <svg viewBox="0 0 100 100" className="animate-spin-slow absolute inset-0 text-ink/70">
         <defs>
           <path id="badge-circle" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0" />
         </defs>
-        <text fontSize="9" fill="currentColor">
+        <text fontSize="11" fill="currentColor">
           <textPath href="#badge-circle" textLength="226" lengthAdjust="spacing">LONG CONTEXT · HYBRID AI ·</textPath>
         </text>
       </svg>
-      <Sparkles className="absolute left-1/2 top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 text-ink" />
+      <Sparkles className="absolute left-1/2 top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 text-ink" />
     </div>
   );
 }
 
-function SideCard({ icon: Icon, title, sub, className }: { icon: typeof FileText; title: string; sub: string; className: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.6, duration: 0.8 }}
-      className={`absolute z-30 hidden w-52 rounded-3xl border border-white bg-white/80 p-5 shadow-[0_20px_60px_-20px_rgba(11,15,20,0.25)] backdrop-blur xl:block ${className}`}
-    >
-      <span className="grid size-10 place-items-center rounded-xl bg-ink/5 text-ink">
-        <Icon className="size-5" />
-      </span>
-      <p className="mt-4 text-lg font-semibold leading-tight tracking-tight text-ink">{title}</p>
-      <p className="mt-2 text-sm text-ink/55">{sub}</p>
-    </motion.div>
-  );
-}
+const HERO_POINTS = [
+  { icon: InfinityIcon, title: "200K tokens", sub: "Long-context processing" },
+  { icon: Layers, title: "Hybrid design", sub: "Mamba + Transformer" },
+  { icon: Zap, title: "Retrieval-first", sub: "Only relevant chunks" },
+];
 
+// From xl: two columns, text left, mascot + orbit right at full size. Below xl: stacked.
 function Hero() {
   return (
-    <section className="relative mx-auto max-w-7xl px-4 sm:px-8">
-      <div className="absolute right-8 top-2 hidden lg:block">
-        <SpinningBadge />
-      </div>
-
+    <section className="relative mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-6 px-4 sm:px-8 xl:min-h-[calc(100svh-5rem)] xl:grid-cols-[minmax(0,1fr)_820px]">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] as const }}
-        className="relative z-20 pt-6 text-center"
+        className="relative z-40 pt-6 text-center xl:pt-0 xl:text-left"
       >
-        <h1 className="relative inline-block font-serif text-7xl leading-none tracking-tight text-ink sm:text-8xl lg:text-[8.5rem]">
-          T.A.M.O.
-          {/* Cyan swoosh orbiting the final "O" */}
-          <svg viewBox="0 0 200 80" className="pointer-events-none absolute -right-[6%] -top-[12%] w-[38%]" aria-hidden>
-            <path d="M6 62 Q 120 84 194 8" fill="none" stroke="#1AC6B8" strokeWidth="4" strokeLinecap="round" />
-          </svg>
+        <span className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-4 py-1.5 text-sm text-ink/70">
+          <Box className="size-4 text-teal" /> Research · Long-Context AI
+        </span>
+        <h1 className="mt-6 text-[clamp(2.6rem,3.7vw,4rem)] font-bold leading-[1.05] tracking-tight text-ink">
+          Transformer And Mamba <span className="text-[#0E9F97]">Orchestrator</span>
         </h1>
-        <p className="mt-3 font-serif text-3xl italic text-ink sm:text-4xl lg:text-5xl">Transformer And Mamba Orchestrator</p>
-        <p className="mx-auto mt-5 max-w-xl text-base text-ink/55 sm:text-lg">
-          Long-context intelligence. Smarter orchestration.
+        <p className="mx-auto mt-5 max-w-lg text-lg text-ink/60 xl:mx-0">
+          A hybrid AI system for long-context understanding, retrieval, and question answering, up to 200K tokens.
         </p>
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-          <Link to="/login" className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-ink/85">
-            Try it now <ArrowRight className="size-4" />
-          </Link>
-          <a href="#how-it-works" className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-6 py-3 text-sm font-medium text-ink transition hover:bg-white">
-            <span className="grid size-5 place-items-center rounded-full bg-ink text-white">
-              <Play className="size-2.5 fill-current" />
-            </span>
-            See how it works
-          </a>
+        <Link to="/login" className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3.5 text-sm font-medium text-white transition hover:bg-ink/85">
+          Try the demo <ArrowRight className="size-4" />
+        </Link>
+        <div className="mt-10 grid grid-cols-3 divide-x divide-ink/10 text-left">
+          {HERO_POINTS.map(({ icon: Icon, title, sub }) => (
+            <div key={title} className="px-3 first:pl-0 sm:px-5 xl:px-3 min-[1440px]:px-5">
+              <Icon className="size-6 text-[#0E9F97]" />
+              <p className="mt-3 whitespace-nowrap text-sm font-semibold text-ink sm:text-base xl:text-sm min-[1440px]:text-base">{title}</p>
+              <p className="mt-0.5 text-xs text-ink/55 sm:text-sm">{sub}</p>
+            </div>
+          ))}
         </div>
       </motion.div>
 
-      <SideCard icon={FileText} title="Process massive documents." sub="Up to 200K tokens with efficient retrieval." className="left-8 top-[300px] -rotate-6" />
-      <SideCard icon={Layers} title="Find, reason, and answer." sub="Grounded, accurate, and context-aware." className="right-8 top-[380px] rotate-6" />
-
-      {/* Orbit stage — fixed-size scene scaled down on smaller screens */}
-      <div className="relative -mt-4 flex h-[270px] justify-center overflow-visible sm:h-[440px] lg:h-[560px]">
+      {/* Orbit stage — full size from lg up, scaled down on smaller screens */}
+      <div className="relative flex h-[270px] justify-center sm:h-[440px] lg:h-[560px]">
         <div className="origin-top scale-[0.46] sm:scale-[0.78] lg:scale-100">
           <OrbitStage />
         </div>
-      </div>
-
-      <div className="absolute bottom-16 left-8 z-30 hidden max-w-[200px] lg:block">
-        <InfinityIcon className="size-8 text-ink" />
-        <p className="mt-2 text-sm text-ink/70">Built on Mamba × Transformer orchestration.</p>
-      </div>
-      <div className="absolute bottom-16 right-8 z-30 hidden max-w-[180px] lg:block">
-        <Zap className="size-6 text-ink" />
-        <p className="mt-2 text-sm text-ink/70">Efficient long-context processing.</p>
       </div>
     </section>
   );
@@ -174,34 +145,32 @@ function Features() {
 }
 
 const STEPS = [
-  { icon: Scissors, title: "Chunk", body: "Split the document into 256-token chunks." },
-  { icon: Cpu, title: "Encode", body: "Mamba embeds every chunk in linear time." },
-  { icon: Search, title: "Retrieve", body: "Cosine similarity picks the top-3 chunks." },
-  { icon: Gauge, title: "Gate", body: "Entropy and relevance decide the path." },
-  { icon: Sparkles, title: "Answer", body: "Fast Mamba answer, or Transformer escalation." },
+  { icon: FileText, title: "Long document", sub: "Up to 200K tokens" },
+  { icon: Scissors, title: "Chunk & encode", sub: "256-token chunks, Mamba-130M" },
+  { icon: Search, title: "Retrieve top-3", sub: "Cosine relevance search" },
+  { icon: Split, title: "Route", sub: "Entropy + relevance gate" },
+  { icon: Sparkles, title: "Generate answer", sub: "Mamba or TinyLlama" },
 ];
 
 function HowItWorks() {
   return (
-    <section id="how-it-works" className="scroll-mt-20 bg-ink py-24 text-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-8">
-        <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan">How it works</p>
-          <h2 className="mt-3 font-serif text-4xl sm:text-5xl">Five steps from document to answer.</h2>
-        </motion.div>
-        <div className="relative mt-16 grid gap-6 md:grid-cols-5">
-          <div className="absolute left-[10%] right-[10%] top-7 hidden h-px bg-gradient-to-r from-cyan/0 via-cyan/50 to-cyan/0 md:block" />
-          {STEPS.map(({ icon: Icon, title, body }, i) => (
-            <motion.div key={title} {...fadeUp} transition={{ ...fadeUp.transition, delay: i * 0.08 }} className="relative text-center">
-              <span className="relative mx-auto grid size-14 place-items-center rounded-2xl border border-cyan/30 bg-ink text-cyan shadow-[0_0_30px_-6px_rgba(0,229,255,0.5)]">
-                <Icon className="size-6" />
+    <section id="how-it-works" className="mx-auto max-w-[1400px] scroll-mt-20 px-4 py-24 sm:px-8">
+      <SectionHeading eyebrow="How it works" title="A simple, efficient pipeline." sub="Retrieval with Mamba, intelligent routing, and precise generation with a Transformer." />
+      <div className="mt-14 flex flex-col items-stretch gap-3 lg:flex-row lg:items-center">
+        {STEPS.map(({ icon: Icon, title, sub }, i) => (
+          <motion.div key={title} {...fadeUp} transition={{ ...fadeUp.transition, delay: i * 0.08 }} className="flex flex-1 items-center gap-3 lg:contents">
+            <div className="flex flex-1 items-center gap-4 rounded-2xl border border-white bg-white/70 p-5 shadow-[0_20px_60px_-30px_rgba(11,15,20,0.3)]">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-ink text-cyan">
+                <Icon className="size-5" />
               </span>
-              <p className="mt-5 text-xs text-white/40">0{i + 1}</p>
-              <h3 className="mt-1 text-lg font-semibold">{title}</h3>
-              <p className="mt-2 text-sm text-white/55">{body}</p>
-            </motion.div>
-          ))}
-        </div>
+              <div>
+                <p className="font-semibold text-ink">{title}</p>
+                <p className="text-xs text-ink/55">{sub}</p>
+              </div>
+            </div>
+            {i < STEPS.length - 1 && <ArrowRight className="mx-auto hidden size-5 shrink-0 text-ink/30 lg:block" />}
+          </motion.div>
+        ))}
       </div>
     </section>
   );
@@ -233,23 +202,26 @@ function Architecture() {
 }
 
 const STATS = [
-  { value: "200K", label: "tokens processed per document" },
-  { value: "84%", label: "hit@3 retrieval rate" },
-  { value: "28–40%", label: "QA accuracy, vs 2–8% for a 2K-window Transformer" },
+  { icon: Target, value: "84%", label: "Retrieval hit@3" },
+  { icon: BarChart3, value: "28–40%", label: "QA accuracy (vs 2–8% baseline)" },
+  { icon: Zap, value: "2.8×", label: "Latency overhead" },
+  { icon: Layers, value: "200K", label: "Max context length" },
 ];
 
 function Benchmarks() {
   return (
-    <section id="benchmarks" className="mx-auto max-w-7xl scroll-mt-20 px-4 pb-24 sm:px-8">
-      <SectionHeading eyebrow="Benchmarks" title="Measured, not promised." sub="Results from our research evaluation on long-document question answering." />
-      <div className="mt-14 grid gap-5 md:grid-cols-3">
-        {STATS.map((s, i) => (
-          <motion.div key={s.label} {...fadeUp} transition={{ ...fadeUp.transition, delay: i * 0.1 }} className="rounded-3xl border border-white bg-white/70 p-8 text-center">
-            <p className="font-serif text-6xl text-ink">{s.value}</p>
-            <p className="mt-3 text-sm text-ink/55">{s.label}</p>
-          </motion.div>
+    <section id="benchmarks" className="mx-auto max-w-[1400px] scroll-mt-20 px-4 sm:px-8">
+      <motion.div {...fadeUp} className="grid grid-cols-2 gap-y-6 rounded-3xl border border-white bg-white/70 px-6 py-7 shadow-[0_20px_60px_-30px_rgba(11,15,20,0.3)] lg:grid-cols-4 lg:divide-x lg:divide-ink/10">
+        {STATS.map(({ icon: Icon, value, label }) => (
+          <div key={label} className="flex flex-col items-center justify-center gap-2 px-2 text-center sm:flex-row sm:gap-4 sm:px-4 sm:text-left">
+            <Icon className="size-8 shrink-0 text-[#0E9F97]" />
+            <div>
+              <p className="whitespace-nowrap text-2xl font-bold tracking-tight text-ink">{value}</p>
+              <p className="text-sm text-ink/55">{label}</p>
+            </div>
+          </div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }
@@ -285,10 +257,10 @@ export default function Landing() {
     <div className="min-h-screen overflow-x-hidden bg-background">
       <Navbar />
       <Hero />
-      <Features />
-      <HowItWorks />
-      <Architecture />
       <Benchmarks />
+      <HowItWorks />
+      <Features />
+      <Architecture />
       <Footer />
     </div>
   );
