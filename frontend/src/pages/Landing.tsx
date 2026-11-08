@@ -1,10 +1,11 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  ArrowRight, BarChart3, Box, FileText, Infinity as InfinityIcon, Layers, Scissors, Search,
+  ArrowRight, BarChart3, FileText, Layers, Scissors, Search,
   Sparkles, Split, Target, Zap,
 } from "lucide-react";
-import { OrbitStage } from "@/components/landing/OrbitStage";
+import { HeroScene } from "@/components/landing/HeroScene";
 
 const NAV = [
   { label: "Features", href: "#features" },
@@ -22,8 +23,11 @@ const fadeUp = {
 
 function Logo() {
   return (
-    <Link to="/" className="flex items-center gap-1.5 text-lg font-semibold tracking-tight text-ink">
-      <span className="font-serif text-2xl italic text-teal">(</span>T.A.M.O.
+    <Link to="/" className="flex items-center gap-3 text-ink">
+      <span className="flex gap-[3px]" aria-hidden>
+        {[0, 1, 2].map((i) => <span key={i} className="h-5 w-[3px] skew-x-[-20deg] rounded-full bg-navy" />)}
+      </span>
+      <span className="font-serif text-2xl tracking-[0.18em]">T.A.M.O.</span>
     </Link>
   );
 }
@@ -31,10 +35,14 @@ function Logo() {
 function Navbar() {
   return (
     <header className="relative z-40 mx-auto flex h-20 max-w-[1400px] items-center justify-between px-4 sm:px-8">
-      <Logo />
-      <nav className="hidden items-center gap-1 rounded-full border border-ink/10 bg-white/60 p-1 backdrop-blur md:flex">
+      <div className="flex items-center gap-4">
+        <Logo />
+        <span className="hidden h-6 w-px bg-ink/15 lg:block" />
+        <span className="hidden text-xs text-ink/60 lg:block">Transformer And Mamba Orchestrator</span>
+      </div>
+      <nav className="hidden items-center gap-8 md:flex">
         {NAV.map((n) => (
-          <a key={n.href} href={n.href} className="rounded-full px-4 py-1.5 text-sm text-ink/75 transition hover:bg-ink/5 hover:text-ink">
+          <a key={n.href} href={n.href} className="text-sm text-ink/75 transition hover:text-ink">
             {n.label}
           </a>
         ))}
@@ -60,52 +68,92 @@ function SpinningBadge() {
   );
 }
 
-const HERO_POINTS = [
-  { icon: InfinityIcon, title: "200K tokens", sub: "Long-context processing" },
-  { icon: Layers, title: "Hybrid design", sub: "Mamba + Transformer" },
-  { icon: Zap, title: "Retrieval-first", sub: "Only relevant chunks" },
+const STATS = [
+  { icon: Layers, value: "200K", label: "Token context" },
+  { icon: Target, value: "84%", label: "Retrieval hit@3" },
+  { icon: BarChart3, value: "28–40%", label: "QA accuracy" },
+  { icon: Zap, value: "2.8×", label: "Latency overhead" },
 ];
 
-// From xl: two columns, text left, mascot + orbit right at full size. Below xl: stacked.
+// From xl: two columns, text left, CSS scene right at full size. Below xl: stacked.
 function Hero() {
   return (
-    <section className="relative mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-6 px-4 sm:px-8 xl:min-h-[calc(100svh-5rem)] xl:grid-cols-[minmax(0,1fr)_820px]">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] as const }}
-        className="relative z-40 pt-6 text-center xl:pt-0 xl:text-left"
-      >
-        <span className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-4 py-1.5 text-sm text-ink/70">
-          <Box className="size-4 text-teal" /> Research · Long-Context AI
-        </span>
-        <h1 className="mt-6 text-[clamp(2.6rem,3.7vw,4rem)] font-bold leading-[1.05] tracking-tight text-ink">
-          Transformer And Mamba <span className="text-[#0E9F97]">Orchestrator</span>
-        </h1>
-        <p className="mx-auto mt-5 max-w-lg text-lg text-ink/60 xl:mx-0">
-          A hybrid AI system for long-context understanding, retrieval, and question answering, up to 200K tokens.
-        </p>
-        <Link to="/login" className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3.5 text-sm font-medium text-white transition hover:bg-ink/85">
-          Try the demo <ArrowRight className="size-4" />
-        </Link>
-        <div className="mt-10 grid grid-cols-3 divide-x divide-ink/10 text-left">
-          {HERO_POINTS.map(({ icon: Icon, title, sub }) => (
-            <div key={title} className="px-3 first:pl-0 sm:px-5 xl:px-3 min-[1440px]:px-5">
-              <Icon className="size-6 text-[#0E9F97]" />
-              <p className="mt-3 whitespace-nowrap text-sm font-semibold text-ink sm:text-base xl:text-sm min-[1440px]:text-base">{title}</p>
-              <p className="mt-0.5 text-xs text-ink/55 sm:text-sm">{sub}</p>
-            </div>
-          ))}
-        </div>
-      </motion.div>
+    <section id="top" className="relative mx-auto max-w-[1400px] px-4 sm:px-8">
+      <div className="grid grid-cols-1 items-center gap-6 xl:min-h-[calc(100svh-9rem)] xl:grid-cols-[minmax(0,1fr)_700px]">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] as const }}
+          className="relative z-40 pt-6 text-center xl:pt-0 xl:text-left"
+        >
+          <p className="inline-flex items-center gap-4 text-[11px] uppercase tracking-[0.35em] text-ink/60">
+            A hybrid long-context AI system <span className="hidden h-px w-24 bg-ink/25 min-[1440px]:block" />
+          </p>
+          <h1 className="mt-5 font-serif text-[clamp(2.6rem,3.7vw,4.3rem)] leading-[1.02] text-ink">
+            Unify Long-Context Understanding with <em className="text-navy">Hybrid Intelligence.</em>
+          </h1>
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed sm:text-lg text-ink/60 xl:mx-0">
+            T.A.M.O. combines a Mamba state space model with a Transformer, retrieving only the relevant passages
+            from documents of up to 200K tokens and routing each question to the model it needs.
+          </p>
+          <Link to="/login" className="mt-7 inline-flex items-center gap-2 rounded-lg bg-navy px-7 py-3.5 text-sm font-medium text-white transition hover:bg-navy/85">
+            Try the Live Demo <ArrowRight className="size-4" />
+          </Link>
+          <div id="benchmarks" className="mt-8 grid scroll-mt-24 grid-cols-2 gap-y-5 rounded-xl border border-white bg-white/60 py-4 text-left shadow-[0_20px_60px_-30px_rgba(11,15,20,0.25)] backdrop-blur sm:grid-cols-4 sm:divide-x sm:divide-ink/10 xl:grid-cols-2 xl:divide-x-0">
+            {STATS.map(({ icon: Icon, value, label }) => (
+              <div key={label} className="flex items-center gap-2.5 px-3 min-[1440px]:px-4">
+                <Icon className="size-6 shrink-0 text-navy" strokeWidth={1.5} />
+                <div>
+                  <p className="whitespace-nowrap font-serif text-2xl leading-none text-ink">{value}</p>
+                  <p className="mt-1 whitespace-nowrap text-xs text-ink/60">{label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-      {/* Orbit stage — full size from lg up, scaled down on smaller screens */}
-      <div className="relative flex h-[270px] justify-center sm:h-[440px] lg:h-[560px]">
-        <div className="origin-top scale-[0.46] sm:scale-[0.78] lg:scale-100">
-          <OrbitStage />
+        {/* Scene — full size from lg up, scaled down on smaller screens */}
+        <div className="relative flex h-[290px] justify-center sm:h-[490px] lg:h-[620px]">
+          <div className="origin-top scale-[0.46] sm:scale-[0.78] lg:scale-100">
+            <HeroScene />
+          </div>
         </div>
       </div>
+      <div className="hidden items-center justify-end gap-6 pb-6 text-[11px] uppercase tracking-[0.25em] text-ink/55 xl:flex">
+        <span className="h-px w-24 bg-ink/25" />
+        Research <span>/</span> Long-context AI <span>/</span> Hybrid architecture
+      </div>
     </section>
+  );
+}
+
+const SECTIONS = ["top", "how-it-works", "features", "architecture"];
+
+// Vertical dots on the left edge: the dot for the section in view is filled.
+function SectionDots() {
+  const [active, setActive] = useState("top");
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
+      { rootMargin: "-45% 0px -45% 0px" },
+    );
+    SECTIONS.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <nav className="fixed left-6 top-1/2 z-50 hidden -translate-y-1/2 flex-col gap-4 min-[1440px]:flex" aria-label="Sections">
+      {SECTIONS.map((id) => (
+        <a
+          key={id}
+          href={`#${id}`}
+          aria-label={id}
+          className={`size-1.5 border border-ink/60 transition ${active === id ? "scale-125 bg-ink" : "bg-transparent"}`}
+        />
+      ))}
+    </nav>
   );
 }
 
@@ -201,31 +249,6 @@ function Architecture() {
   );
 }
 
-const STATS = [
-  { icon: Target, value: "84%", label: "Retrieval hit@3" },
-  { icon: BarChart3, value: "28–40%", label: "QA accuracy (vs 2–8% baseline)" },
-  { icon: Zap, value: "2.8×", label: "Latency overhead" },
-  { icon: Layers, value: "200K", label: "Max context length" },
-];
-
-function Benchmarks() {
-  return (
-    <section id="benchmarks" className="mx-auto max-w-[1400px] scroll-mt-20 px-4 sm:px-8">
-      <motion.div {...fadeUp} className="grid grid-cols-2 gap-y-6 rounded-3xl border border-white bg-white/70 px-6 py-7 shadow-[0_20px_60px_-30px_rgba(11,15,20,0.3)] lg:grid-cols-4 lg:divide-x lg:divide-ink/10">
-        {STATS.map(({ icon: Icon, value, label }) => (
-          <div key={label} className="flex flex-col items-center justify-center gap-2 px-2 text-center sm:flex-row sm:gap-4 sm:px-4 sm:text-left">
-            <Icon className="size-8 shrink-0 text-[#0E9F97]" />
-            <div>
-              <p className="whitespace-nowrap text-2xl font-bold tracking-tight text-ink">{value}</p>
-              <p className="text-sm text-ink/55">{label}</p>
-            </div>
-          </div>
-        ))}
-      </motion.div>
-    </section>
-  );
-}
-
 function Footer() {
   return (
     <footer className="border-t border-ink/10">
@@ -255,9 +278,9 @@ function Footer() {
 export default function Landing() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
+      <SectionDots />
       <Navbar />
       <Hero />
-      <Benchmarks />
       <HowItWorks />
       <Features />
       <Architecture />
