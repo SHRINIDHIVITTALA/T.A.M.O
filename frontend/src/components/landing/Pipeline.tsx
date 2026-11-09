@@ -22,7 +22,7 @@ const STEPS = [
   { title: "Answer", body: "Confident drafts return on the fast Mamba path. Escalated questions are answered by TinyLlama-1.1B, reading only the three passages." },
 ];
 
-export function ChunkGrid({ step, hits = TOP3, count = CHUNKS }: { step: number; hits?: number[]; count?: number }) {
+export function ChunkGrid({ step, hits = TOP3, count = CHUNKS, ink = "#0B0F14" }: { step: number; hits?: number[]; count?: number; ink?: string }) {
   const w = COLS * (CELL + GAP) - GAP;
   const h = Math.ceil(count / COLS) * (CELL + GAP) - GAP;
   return (
@@ -31,7 +31,7 @@ export function ChunkGrid({ step, hits = TOP3, count = CHUNKS }: { step: number;
         const hit = hits.includes(i);
         const x = (i % COLS) * (CELL + GAP) - (step === 0 ? GAP / 2 : 0);
         const y = Math.floor(i / COLS) * (CELL + GAP) - (step === 0 ? GAP / 2 : 0);
-        let fill = "#0B0F14";
+        let fill = ink;
         let opacity = 0.14;
         if (step >= 2) opacity = 0.12 + shade(i) * 0.5;
         if (step >= 3) opacity = hit ? 1 : 0.07 + shade(i) * 0.12;

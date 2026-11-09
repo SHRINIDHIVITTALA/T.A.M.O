@@ -1,21 +1,53 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Copy, FileText, Menu, PanelLeft, Plus, RotateCcw, SquarePen, Upload, X } from "lucide-react";
+import { Check, Columns3, Copy, FileText, LogOut, Menu, Moon, PanelLeft, Plus, RotateCcw, SquarePen, Sun, Upload, X } from "lucide-react";
 import { Attachment01Icon } from "@hugeicons/core-free-icons";
 import PromptBar from "@/components/chat/PromptBar";
 import VoicePill from "@/components/chat/VoicePill";
 import ThoughtLine from "@/components/chat/ThoughtLine";
 import { ChunkGrid } from "@/components/landing/Pipeline";
-import { SAMPLE_DOCS, TAU_H, ask, makeUploadedDoc, suggestions, type Answer, type Doc } from "@/api/chat";
+import { SAMPLE_DOCS, TAU_H, ask, compare, makeUploadedDoc, suggestions, type Answer, type Comparison, type Doc, type Source } from "@/api/chat";
 
-type AssistantMsg = { id: string; role: "assistant"; question: string; steps: string[]; working: boolean; answer?: Answer; error?: string };
+type AssistantMsg = { id: string; role: "assistant"; question: string; steps: string[]; working: boolean; answer?: Answer; error?: string; compare?: { loading: boolean; result?: Comparison } };
 type Message = { id: string; role: "user"; text: string } | AssistantMsg;
 interface Chat { id: string; docId: string; messages: Message[]; createdAt: number }
 
 const UPLOAD_STAGES = ["Reading the file", "Splitting into 256-token chunks", "Encoding chunks with Mamba-130M"];
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+// Chats and uploaded documents persist in this browser until the backend stores them.
+const STORE = "tamo-chats-v1";
+const THEME = "tamo-theme";
+function initialDark() {
+  try {
+    const saved = localStorage.getItem(THEME);
+    if (saved) return saved === "dark";
+  } catch { /* storage unavailable */ }
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+}
+
+function loadStore(): { docs: Doc[]; chats: Chat[] } | null {
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as { docs: Doc[]; chats: Chat[] };
+    if (!data.chats?.length) return null;
+    // Anything still running when the page closed was interrupted.
+    data.chats = data.chats.map((c) => ({
+      ...c,
+      messages: c.messages.map((m) =>
+        m.role === "assistant" && (m.working || m.compare?.loading)
+          ? { ...m, working: false, error: m.answer ? m.error : "Interrupted.", compare: m.compare?.result ? m.compare : undefined }
+          : m,
+      ),
+    }));
+    return { docs: [...data.docs.filter((d) => !d.sample), ...SAMPLE_DOCS], chats: data.chats };
+  } catch {
+    return null;
+  }
+}
 const fmtTokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}K` : String(n));
 const newChat = (docId: string): Chat => ({ id: uid(), docId, messages: [], createdAt: Date.now() });
 const titleOf = (c: Chat) => {
@@ -33,55 +65,68 @@ function Mark({ className = "" }: { className?: string }) {
 
 function DocChip({ doc, onClear }: { doc: Doc; onClear?: () => void }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700">
-      <FileText className="size-3.5 shrink-0 text-crimson" />
+    <span className="inline-flex max-w-full items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 dark:border-neutral-700 bg-white dark:bg-[#212121] px-2.5 py-1.5 text-xs text-neutral-700 dark:text-neutral-300">
+      <FileText className="size-3.5 shrink-0 text-crimson dark:text-[#F0626A]" />
       <span className="truncate">{doc.title}</span>
-      <span className="shrink-0 text-neutral-400">{fmtTokens(doc.tokens)} tokens</span>
-      {onClear && <button onClick={onClear} aria-label="Change document" className="shrink-0 text-neutral-400 hover:text-neutral-700"><X className="size-3.5" /></button>}
+      <span className="shrink-0 text-neutral-400 dark:text-neutral-500">{fmtTokens(doc.tokens)} tokens</span>
+      {onClear && <button onClick={onClear} aria-label="Change document" className="shrink-0 text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200"><X className="size-3.5" /></button>}
     </span>
   );
 }
 
+function Passage({ s }: { s: Source }) {
+  const i = s.quote ? s.text.indexOf(s.quote) : -1;
+  if (i < 0) return <>{s.text}</>;
+  return (
+    <>
+      {s.text.slice(0, i)}
+      <mark className="rounded bg-crimson/10 dark:bg-crimson/30 px-0.5 text-neutral-900 dark:text-neutral-100">{s.quote}</mark>
+      {s.text.slice(i + s.quote!.length)}
+    </>
+  );
+}
+
 // Slide-over with the retrieved passages and how the gate decided.
-function SourcesDrawer({ doc, answer, onClose }: { doc: Doc; answer: Answer; onClose: () => void }) {
+function SourcesDrawer({ doc, answer, dark, onClose }: { doc: Doc; answer: Answer; dark: boolean; onClose: () => void }) {
   const fast = answer.route === "fast";
   return (
     <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
       <motion.aside
-        className="absolute inset-y-0 right-0 flex w-full max-w-[420px] flex-col bg-white shadow-2xl"
+        className="absolute inset-y-0 right-0 flex w-full max-w-[420px] flex-col bg-white dark:bg-[#212121] shadow-2xl"
         initial={{ x: 40 }} animate={{ x: 0 }} exit={{ x: 40 }} transition={{ ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-100 px-5">
-          <p className="text-sm font-medium text-neutral-900">Sources & routing</p>
-          <button onClick={onClose} aria-label="Close" className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100"><X className="size-4" /></button>
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-100 dark:border-neutral-800 px-5">
+          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Sources & routing</p>
+          <button onClick={onClose} aria-label="Close" className="rounded-md p-1 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"><X className="size-4" /></button>
         </div>
         <div className="flex-1 space-y-8 overflow-y-auto p-5">
           <section>
-            <p className="text-xs font-medium uppercase tracking-wider text-neutral-400">Retrieved passages</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Retrieved passages</p>
+            <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">Highlighted: the part the answer draws on.</p>
             <div className="mt-3 space-y-3">
               {answer.sources.map((s) => (
-                <div key={s.chunk} className="rounded-xl bg-neutral-50 p-4">
-                  <p className="flex justify-between text-xs text-neutral-500"><span>Chunk {s.chunk + 1} of {doc.chunks}</span><span>cosine {s.score.toFixed(2)}</span></p>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-700">{s.text}</p>
+                <div key={s.chunk} className="rounded-xl bg-neutral-50 dark:bg-neutral-800/60 p-4">
+                  <p className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400"><span>Chunk {s.chunk + 1} of {doc.chunks}</span><span>cosine {s.score.toFixed(2)}</span></p>
+                  <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300"><Passage s={s} /></p>
                 </div>
               ))}
             </div>
           </section>
           <section>
-            <p className="text-xs font-medium uppercase tracking-wider text-neutral-400">Where they sit in the document</p>
-            <div className="mt-3"><ChunkGrid step={3} hits={answer.sources.map((s) => s.chunk)} count={doc.chunks} /></div>
+            <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Where they sit in the document</p>
+            <div className="mt-3"><ChunkGrid step={3} hits={answer.sources.map((s) => s.chunk)} count={doc.chunks} ink={dark ? "#E5E5E5" : "#0B0F14"} /></div>
           </section>
           <section>
-            <p className="text-xs font-medium uppercase tracking-wider text-neutral-400">Gate</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Gate</p>
             <dl className="mt-3 space-y-2 text-sm">
               {answer.model !== "tinyllama" && (
-                <div className="flex justify-between"><dt className="text-neutral-500">Draft entropy</dt><dd className="text-neutral-900">{answer.entropy.toFixed(2)} {answer.entropy <= TAU_H ? "≤" : ">"} τH {TAU_H}</dd></div>
+                <div className="flex justify-between"><dt className="text-neutral-500 dark:text-neutral-400">Draft entropy</dt><dd className="text-neutral-900 dark:text-neutral-100">{answer.entropy.toFixed(2)} {answer.entropy <= TAU_H ? "≤" : ">"} τH {TAU_H}</dd></div>
               )}
-              <div className="flex justify-between"><dt className="text-neutral-500">Top relevance</dt><dd className="text-neutral-900">{answer.relevance.toFixed(2)} (τR = −∞)</dd></div>
-              <div className="flex justify-between"><dt className="text-neutral-500">Route</dt><dd className={fast ? "text-neutral-900" : "text-crimson"}>{fast ? "Fast path · Mamba" : "Escalated · TinyLlama-1.1B"}</dd></div>
+              <div className="flex justify-between"><dt className="text-neutral-500 dark:text-neutral-400">Top relevance</dt><dd className="text-neutral-900 dark:text-neutral-100">{answer.relevance.toFixed(2)} (τR = −∞)</dd></div>
+              <div className="flex justify-between"><dt className="text-neutral-500 dark:text-neutral-400">Route</dt><dd className={fast ? "text-neutral-900 dark:text-neutral-100" : "text-crimson dark:text-[#F0626A]"}>{fast ? "Fast path · Mamba" : "Escalated · TinyLlama-1.1B"}</dd></div>
             </dl>
-            <p className="mt-4 text-xs leading-relaxed text-neutral-400">Thresholds from the paper's calibration. In its evaluation, 96.8% of questions were escalated.</p>
+            <p className="mt-4 text-xs leading-relaxed text-neutral-400 dark:text-neutral-500">Thresholds from the paper's calibration. In its evaluation, 96.8% of questions were escalated.</p>
           </section>
         </div>
       </motion.aside>
@@ -89,7 +134,38 @@ function SourcesDrawer({ doc, answer, onClose }: { doc: Doc; answer: Answer; onC
   );
 }
 
-function AssistantTurn({ m, onSources, onRetry }: { m: AssistantMsg; onSources: () => void; onRetry: () => void }) {
+function ComparePanel({ m }: { m: AssistantMsg }) {
+  const c = m.compare!;
+  const cols = [
+    { name: "T.A.M.O. Hybrid", sub: m.answer!.route === "fast" ? "Fast path · Mamba" : "Escalated · TinyLlama", paper: "32.0%", text: m.answer!.text, accent: true },
+    { name: "TinyLlama + retrieval", sub: "Always escalate", paper: "32.8%", text: c.result?.tRetr },
+    { name: "TinyLlama, 2K window", sub: "No retrieval", paper: "5.6%", text: c.result?.tOnly },
+  ];
+  return (
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
+      <div className="grid gap-3 md:grid-cols-3">
+        {cols.map((col) => (
+          <div key={col.name} className={`rounded-2xl border p-4 ${col.accent ? "border-crimson/30 dark:border-crimson/60 bg-crimson/[0.03] dark:bg-crimson/10" : "border-neutral-200 dark:border-neutral-700 dark:border-neutral-700"}`}>
+            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{col.name}</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">{col.sub}</p>
+            {col.text ? (
+              <p className="mt-3 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">{col.text}</p>
+            ) : (
+              <div className="mt-3 space-y-2" aria-label="Loading">
+                <div className="h-3 w-full animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+                <div className="h-3 w-4/5 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+                <div className="h-3 w-3/5 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+              </div>
+            )}
+            <p className="mt-3 border-t border-neutral-100 dark:border-neutral-800 pt-2 text-[11px] text-neutral-400 dark:text-neutral-500">Paper accuracy (SQuAD, 250 questions): <span className="text-neutral-700 dark:text-neutral-300">{col.paper}</span></p>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function AssistantTurn({ m, dark, onSources, onRetry, onCompare }: { m: AssistantMsg; dark: boolean; onSources: () => void; onRetry: () => void; onCompare: () => void }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
     if (!m.answer) return;
@@ -99,35 +175,43 @@ function AssistantTurn({ m, onSources, onRetry }: { m: AssistantMsg; onSources: 
   };
   return (
     <div className="group flex gap-4">
-      <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-crimson/10"><Mark className="size-3.5 text-crimson" /></span>
+      <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-crimson/10 dark:bg-crimson/25"><Mark className="size-3.5 text-crimson dark:text-[#F0626A]" /></span>
       <div className="min-w-0 flex-1">
-        <ThoughtLine working={m.working} steps={m.steps} label="Reading the document…" doneLabel="Answered in" fontSize={13} color="#737373" glyphColor="#8E1219" />
+        <ThoughtLine working={m.working} steps={m.steps} label="Reading the document…" doneLabel="Answered in" fontSize={13} color={dark ? "#A3A3A3" : "#737373"} glyphColor={dark ? "#F0626A" : "#8E1219"} />
         {m.answer && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-            <p className="mt-3 text-[15px] leading-7 text-neutral-900">{m.answer.text}</p>
+            <p className="mt-3 text-[15px] leading-7 text-neutral-900 dark:text-neutral-100">{m.answer.text}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button onClick={onSources} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700 transition hover:bg-neutral-200">
-                <FileText className="size-3" /> Sources (3)
-              </button>
-              <button onClick={onSources} className={`rounded-full px-3 py-1 text-xs transition ${m.answer.route === "fast" ? "bg-neutral-100 text-neutral-700 hover:bg-neutral-200" : "bg-crimson/10 text-crimson hover:bg-crimson/15"}`}>
+              {m.answer.sources.length > 0 && (
+                <button onClick={onSources} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-xs text-neutral-700 dark:text-neutral-300 transition hover:bg-neutral-200 dark:hover:bg-neutral-700">
+                  <FileText className="size-3" /> Sources ({m.answer.sources.length})
+                </button>
+              )}
+              <button onClick={onSources} className={`rounded-full px-3 py-1 text-xs transition ${m.answer.route === "fast" ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700" : "bg-crimson/10 dark:bg-crimson/25 text-crimson dark:text-[#F0626A] hover:bg-crimson/15 dark:hover:bg-crimson/35"}`}>
                 {m.answer.route === "fast" ? "Fast path → Mamba" : "Escalated → TinyLlama"}
               </button>
+              <button onClick={onCompare} disabled={!!m.compare} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-xs text-neutral-700 dark:text-neutral-300 transition hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-50">
+                <Columns3 className="size-3" /> Compare systems
+              </button>
               <span className="ml-1 flex gap-0.5 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
-                <button onClick={copy} aria-label="Copy" className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}</button>
-                <button onClick={onRetry} aria-label="Retry" className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"><RotateCcw className="size-3.5" /></button>
+                <button onClick={copy} aria-label="Copy" className="rounded-md p-1.5 text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200">{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}</button>
+                <button onClick={onRetry} aria-label="Retry" className="rounded-md p-1.5 text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200"><RotateCcw className="size-3.5" /></button>
               </span>
             </div>
+            {m.compare && <ComparePanel m={m} />}
           </motion.div>
         )}
-        {m.error && <p className="mt-2 text-sm text-neutral-400">{m.error}</p>}
+        {m.error && <p className="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{m.error}</p>}
       </div>
     </div>
   );
 }
 
 export default function ChatPage() {
-  const [docs, setDocs] = useState<Doc[]>(SAMPLE_DOCS);
-  const [chats, setChats] = useState<Chat[]>(() => [newChat(SAMPLE_DOCS[0].id)]);
+  const [stored] = useState(loadStore);
+  const [dark, setDark] = useState(initialDark);
+  const [docs, setDocs] = useState<Doc[]>(() => stored?.docs ?? SAMPLE_DOCS);
+  const [chats, setChats] = useState<Chat[]>(() => stored?.chats ?? [newChat(SAMPLE_DOCS[0].id)]);
   const [chatId, setChatId] = useState(() => chats[0].id);
   const [busy, setBusy] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -147,6 +231,10 @@ export default function ChatPage() {
   const empty = chat.messages.length === 0;
 
   useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" }); }, [chat.messages]);
+  useEffect(() => {
+    try { localStorage.setItem(STORE, JSON.stringify({ docs: docs.filter((d) => !d.sample), chats })); } catch { /* storage unavailable */ }
+  }, [docs, chats]);
+  useEffect(() => { try { localStorage.setItem(THEME, dark ? "dark" : "light"); } catch { /* storage unavailable */ } }, [dark]);
   useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(""), 3500); return () => clearTimeout(t); }, [notice]);
 
   const updateChat = (id: string, fn: (c: Chat) => Chat) => setChats((cs) => cs.map((c) => (c.id === id ? fn(c) : c)));
@@ -167,6 +255,17 @@ export default function ChatPage() {
       patchMsg(cid, aid, () => ({ working: false, error: "Stopped." }));
     }
     setBusy(false);
+  };
+
+  const runCompare = async (m: AssistantMsg) => {
+    const cid = chatId;
+    patchMsg(cid, m.id, () => ({ compare: { loading: true } }));
+    try {
+      const result = await compare(doc, m.question);
+      patchMsg(cid, m.id, () => ({ compare: { loading: false, result } }));
+    } catch {
+      patchMsg(cid, m.id, () => ({ compare: undefined }));
+    }
   };
 
   const startNewChat = () => {
@@ -215,37 +314,43 @@ export default function ChatPage() {
   ].filter((g) => g.items.length);
 
   const sidebar = (
-    <div className="flex h-full w-[260px] flex-col bg-[#F7F7F5] px-3 py-3">
+    <div className="flex h-full w-[260px] flex-col bg-[#F7F7F5] dark:bg-[#171717] px-3 py-3">
       <div className="flex items-center justify-between px-2">
-        <Link to="/" className="flex items-center gap-2 text-neutral-900"><Mark className="size-4 text-crimson" /><span className="font-serif text-xl">T.A.M.O.</span></Link>
-        <button onClick={() => (drawer ? setDrawer(false) : setCollapsed(true))} aria-label="Close sidebar" className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-200/70"><PanelLeft className="size-4" /></button>
+        <Link to="/" className="flex items-center gap-2 text-neutral-900 dark:text-neutral-100"><Mark className="size-4 text-crimson dark:text-[#F0626A]" /><span className="font-serif text-xl">T.A.M.O.</span></Link>
+        <button onClick={() => (drawer ? setDrawer(false) : setCollapsed(true))} aria-label="Close sidebar" className="rounded-md p-1.5 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/70 dark:hover:bg-white/10"><PanelLeft className="size-4" /></button>
       </div>
-      <button onClick={startNewChat} className="mt-4 flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-neutral-800 hover:bg-neutral-200/70"><SquarePen className="size-4" /> New chat</button>
-      <button onClick={() => fileInput.current?.click()} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-neutral-800 hover:bg-neutral-200/70"><Upload className="size-4" /> Upload document</button>
+      <button onClick={startNewChat} className="mt-4 flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-neutral-800 dark:text-neutral-200 hover:bg-neutral-200/70 dark:hover:bg-white/10"><SquarePen className="size-4" /> New chat</button>
+      <button onClick={() => fileInput.current?.click()} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-neutral-800 dark:text-neutral-200 hover:bg-neutral-200/70 dark:hover:bg-white/10"><Upload className="size-4" /> Upload document</button>
       <div className="mt-5 flex-1 overflow-y-auto">
         {groups.map((g) => (
           <div key={g.label} className="mb-4">
-            <p className="px-2 pb-1 text-xs text-neutral-400">{g.label}</p>
+            <p className="px-2 pb-1 text-xs text-neutral-400 dark:text-neutral-500">{g.label}</p>
             {g.items.map((c) => (
-              <button key={c.id} onClick={() => { setChatId(c.id); setDrawer(false); }} className={`block w-full truncate rounded-lg px-2 py-2 text-left text-sm transition ${c.id === chatId ? "bg-neutral-200/80 text-neutral-900" : "text-neutral-700 hover:bg-neutral-200/50"}`}>
+              <button key={c.id} onClick={() => { setChatId(c.id); setDrawer(false); }} className={`block w-full truncate rounded-lg px-2 py-2 text-left text-sm transition ${c.id === chatId ? "bg-neutral-200/80 dark:bg-white/10 text-neutral-900 dark:text-neutral-100" : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200/50 dark:hover:bg-white/5"}`}>
                 {titleOf(c)}
               </button>
             ))}
           </div>
         ))}
       </div>
-      <div className="border-t border-neutral-200 pt-3">
-        <Link to="/results" className="block rounded-lg px-2 py-2 text-sm text-neutral-600 hover:bg-neutral-200/50">Paper results</Link>
-        <Link to="/" className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-neutral-800 hover:bg-neutral-200/50">
+      <div className="border-t border-neutral-200 dark:border-neutral-700 dark:border-neutral-700 pt-3">
+        <div className="flex items-center gap-2.5 px-2 py-2 text-sm text-neutral-800 dark:text-neutral-200">
           <span className="grid size-7 place-items-center rounded-full bg-crimson text-xs font-medium text-white">G</span> Guest
-        </Link>
+          {/* UI only: real sign-out comes with Supabase auth. */}
+          <button onClick={() => setDark(!dark)} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} className="ml-auto rounded-lg p-1.5 text-neutral-500 dark:text-neutral-400 transition hover:bg-neutral-200/70 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-neutral-100">
+            {dark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+          </button>
+          <Link to="/login" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-neutral-500 dark:text-neutral-400 transition hover:bg-neutral-200/70 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-neutral-100">
+            <LogOut className="size-3.5" /> Log out
+          </Link>
+        </div>
       </div>
     </div>
   );
 
   const prompt = (
     <div className="w-full">
-      {notice && <p className="mb-2 text-center text-xs text-neutral-500">{notice}</p>}
+      {notice && <p className="mb-2 text-center text-xs text-neutral-500 dark:text-neutral-400">{notice}</p>}
       <PromptBar
         placeholder={`Ask about ${doc.title}`}
         sources={[{ key: "upload", name: "Upload document", description: ".txt, .pdf or .md, up to 200K tokens", icon: Attachment01Icon, attach: true }]}
@@ -257,20 +362,20 @@ export default function ChatPage() {
         onStop={() => controller.current?.abort()}
         onAttach={() => { fileInput.current?.click(); }}
         insert={insert}
-        trailing={<VoicePill reactive="mic" size={28} background="#F5F5F5" accentColor="#8E1219" iconColor="#737373" onStart={startDictation} onStop={stopDictation} />}
-        background="#FFFFFF"
-        color="#171717"
-        menuBackground="#FFFFFF"
+        trailing={<VoicePill reactive="mic" size={28} background={dark ? "#3A3A3A" : "#F5F5F5"} accentColor={dark ? "#F0626A" : "#8E1219"} iconColor={dark ? "#A3A3A3" : "#737373"} onStart={startDictation} onStop={stopDictation} />}
+        background={dark ? "#303030" : "#FFFFFF"}
+        color={dark ? "#ECECEC" : "#171717"}
+        menuBackground={dark ? "#303030" : "#FFFFFF"}
         sparkColor="#D3242B"
         width={768}
         radius={24}
-        className="rounded-[24px] shadow-[0_0_0_1px_rgba(0,0,0,0.08),0_8px_24px_-12px_rgba(0,0,0,0.15)]"
+        className={`rounded-[24px] ${dark ? "shadow-[0_0_0_1px_rgba(255,255,255,0.08)]" : "shadow-[0_0_0_1px_rgba(0,0,0,0.08),0_8px_24px_-12px_rgba(0,0,0,0.15)]"}`}
       />
     </div>
   );
 
   return (
-    <div className="flex h-svh overflow-hidden bg-white">
+    <div className={`flex h-svh overflow-hidden ${dark ? "dark bg-[#212121]" : "bg-white"}`}>
       <input ref={fileInput} type="file" accept=".txt,.pdf,.md" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) startUpload(f); e.target.value = ""; }} />
 
       <AnimatePresence initial={false}>
@@ -291,23 +396,22 @@ export default function ChatPage() {
 
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-2 px-3 sm:px-4">
-          <button onClick={() => setDrawer(true)} aria-label="Open sidebar" className="rounded-md p-1.5 text-neutral-600 hover:bg-neutral-100 lg:hidden"><Menu className="size-5" /></button>
+          <button onClick={() => setDrawer(true)} aria-label="Open sidebar" className="rounded-md p-1.5 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 lg:hidden"><Menu className="size-5" /></button>
           {collapsed && (
             <span className="hidden gap-1 lg:flex">
-              <button onClick={() => setCollapsed(false)} aria-label="Open sidebar" className="rounded-md p-1.5 text-neutral-600 hover:bg-neutral-100"><PanelLeft className="size-4" /></button>
-              <button onClick={startNewChat} aria-label="New chat" className="rounded-md p-1.5 text-neutral-600 hover:bg-neutral-100"><SquarePen className="size-4" /></button>
+              <button onClick={() => setCollapsed(false)} aria-label="Open sidebar" className="rounded-md p-1.5 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"><PanelLeft className="size-4" /></button>
+              <button onClick={startNewChat} aria-label="New chat" className="rounded-md p-1.5 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"><SquarePen className="size-4" /></button>
             </span>
           )}
-          <span className="px-1 text-sm font-medium text-neutral-800">T.A.M.O. <span className="font-normal text-neutral-400">Hybrid</span></span>
-          <span className="ml-auto rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] text-neutral-500">Demo</span>
+          <span className="px-1 text-sm font-medium text-neutral-800 dark:text-neutral-200">T.A.M.O. <span className="font-normal text-neutral-400 dark:text-neutral-500">Hybrid</span></span>
         </header>
 
         {upload ? (
           <div className="grid flex-1 place-items-center px-4">
             <div className="w-full max-w-sm">
-              <p className="truncate text-sm font-medium text-neutral-900">{upload.name}</p>
-              <p className="mt-1 text-sm text-neutral-500">{UPLOAD_STAGES[upload.stage]}…</p>
-              <div className="mt-4 h-1 overflow-hidden rounded-full bg-neutral-100">
+              <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{upload.name}</p>
+              <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{UPLOAD_STAGES[upload.stage]}…</p>
+              <div className="mt-4 h-1 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
                 <motion.div className="h-full bg-crimson" animate={{ width: `${((upload.stage + 1) / UPLOAD_STAGES.length) * 100}%` }} transition={{ duration: 0.7 }} />
               </div>
             </div>
@@ -315,24 +419,24 @@ export default function ChatPage() {
         ) : empty ? (
           <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 pb-16">
             <motion.div key={chat.id + doc.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-3xl">
-              <h1 className="text-center font-serif text-4xl text-neutral-900 sm:text-5xl">What do you want to know?</h1>
+              <h1 className="text-center font-serif text-4xl text-neutral-900 dark:text-neutral-100 sm:text-5xl">What do you want to know?</h1>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-                <span className="text-xs text-neutral-400">Asking</span>
+                <span className="text-xs text-neutral-400 dark:text-neutral-500">Asking</span>
                 <DocChip doc={doc} />
               </div>
               <div className="mt-3">{prompt}</div>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {suggestions(doc.id).map((q) => (
-                  <button key={q} onClick={() => send(q)} className="rounded-full border border-neutral-200 px-3.5 py-1.5 text-sm text-neutral-600 transition hover:bg-neutral-50 hover:text-neutral-900">{q}</button>
+                  <button key={q} onClick={() => send(q)} className="rounded-full border border-neutral-200 dark:border-neutral-700 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 transition hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100">{q}</button>
                 ))}
               </div>
               <div className="mt-10 text-center">
-                <p className="text-xs text-neutral-400">Or switch document</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">Or switch document</p>
                 <div className="mt-2 flex flex-wrap justify-center gap-2">
                   {docs.filter((d) => d.id !== doc.id).map((d) => (
-                    <button key={d.id} onClick={() => updateChat(chatId, (c) => ({ ...c, docId: d.id }))} className="rounded-lg px-2.5 py-1 text-xs text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800">{d.title}</button>
+                    <button key={d.id} onClick={() => updateChat(chatId, (c) => ({ ...c, docId: d.id }))} className="rounded-lg px-2.5 py-1 text-xs text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-800">{d.title}</button>
                   ))}
-                  <button onClick={() => fileInput.current?.click()} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs text-crimson hover:bg-crimson/5"><Plus className="size-3" /> Upload your own</button>
+                  <button onClick={() => fileInput.current?.click()} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs text-crimson dark:text-[#F0626A] hover:bg-crimson/5 dark:hover:bg-crimson/20"><Plus className="size-3" /> Upload your own</button>
                 </div>
               </div>
             </motion.div>
@@ -345,23 +449,23 @@ export default function ChatPage() {
                 {chat.messages.map((m) =>
                   m.role === "user" ? (
                     <div key={m.id} className="flex justify-end">
-                      <p className="max-w-[80%] rounded-3xl bg-neutral-100 px-5 py-2.5 text-[15px] leading-7 text-neutral-900">{m.text}</p>
+                      <p className="max-w-[80%] rounded-3xl bg-neutral-100 dark:bg-neutral-800 px-5 py-2.5 text-[15px] leading-7 text-neutral-900 dark:text-neutral-100">{m.text}</p>
                     </div>
                   ) : (
-                    <AssistantTurn key={m.id} m={m} onSources={() => m.answer && setSources(m.answer)} onRetry={() => send(m.question)} />
+                    <AssistantTurn key={m.id} m={m} dark={dark} onSources={() => m.answer && setSources(m.answer)} onRetry={() => send(m.question)} onCompare={() => runCompare(m)} />
                   ),
                 )}
               </div>
             </div>
             <div className="shrink-0 px-4 pb-3">
               <div className="mx-auto max-w-3xl">{prompt}</div>
-              <p className="mt-2 text-center text-[11px] text-neutral-400">Demo answers are scripted. Real answers arrive with the backend.</p>
+              <p className="mt-2 text-center text-[11px] text-neutral-400 dark:text-neutral-500">T.A.M.O. can make mistakes. Check the sources.</p>
             </div>
           </>
         )}
       </main>
 
-      <AnimatePresence>{sources && <SourcesDrawer doc={doc} answer={sources} onClose={() => setSources(null)} />}</AnimatePresence>
+      <AnimatePresence>{sources && <SourcesDrawer doc={doc} answer={sources} dark={dark} onClose={() => setSources(null)} />}</AnimatePresence>
     </div>
   );
 }
