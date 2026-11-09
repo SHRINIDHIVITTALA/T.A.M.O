@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { motion, useMotionValueEvent, useScroll } from "framer-motion";
 
-// 200K tokens / 256-token chunks ≈ 782 chunks → 34 × 23 grid.
+// 200K tokens / 256-token chunks = 787 chunks (paper, Table 3) → 34-wide grid, last row partial.
 const COLS = 34;
-const ROWS = 23;
+const CHUNKS = 787;
+const ROWS = Math.ceil(CHUNKS / COLS);
 const CELL = 10;
 const GAP = 3;
 const TOP3 = [211, 437, 618];
@@ -16,7 +17,7 @@ const shade = (i: number) => {
 
 const STEPS = [
   { title: "Take the whole document", body: "Reports, books or transcripts of up to 200,000 tokens go in as a single input. Nothing is cut off at a context window." },
-  { title: "Chunk and encode", body: "The text is split into 782 chunks of 256 tokens. Mamba-130M encodes each one once, in linear time, into a vector." },
+  { title: "Chunk and encode", body: "The text is split into 787 chunks of 256 tokens. Mamba-130M encodes each one once, in linear time, into a vector." },
   { title: "Retrieve the top 3", body: "The question is encoded the same way and compared to every chunk by cosine similarity. Only the three closest passages move on." },
   { title: "Gate the draft", body: "Mamba drafts an answer. If its entropy is low and the passages are relevant enough, the draft is accepted. Otherwise the question escalates." },
   { title: "Answer", body: "Confident drafts return on the fast Mamba path. Escalated questions are answered by TinyLlama-1.1B, reading only the three passages." },
@@ -26,8 +27,8 @@ function ChunkGrid({ step }: { step: number }) {
   const w = COLS * (CELL + GAP) - GAP;
   const h = ROWS * (CELL + GAP) - GAP;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="Document split into 782 chunks">
-      {Array.from({ length: COLS * ROWS }, (_, i) => {
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="Document split into 787 chunks">
+      {Array.from({ length: CHUNKS }, (_, i) => {
         const hit = TOP3.includes(i);
         const x = (i % COLS) * (CELL + GAP) - (step === 0 ? GAP / 2 : 0);
         const y = Math.floor(i / COLS) * (CELL + GAP) - (step === 0 ? GAP / 2 : 0);
@@ -70,7 +71,7 @@ function Meter({ label, value, threshold, pass }: { label: string; value: number
 
 function Readout({ step }: { step: number }) {
   if (step === 0) return <p className="font-mono text-xs text-ink/60">input · 200,000 tokens</p>;
-  if (step === 1) return <p className="font-mono text-xs text-ink/60">782 chunks × 256 tokens → Mamba-130M → 782 vectors</p>;
+  if (step === 1) return <p className="font-mono text-xs text-ink/60">787 chunks × 256 tokens → Mamba-130M → 787 vectors</p>;
   if (step === 2)
     return (
       <p className="font-mono text-xs text-ink/60">

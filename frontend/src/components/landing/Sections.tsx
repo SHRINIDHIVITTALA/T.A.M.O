@@ -111,7 +111,7 @@ export function Architecture() {
 }
 
 const WORKED = [
-  { value: "84%", label: "hit@3", note: "The right passage is in the top three retrieved chunks for 84% of questions." },
+  { value: "84%", label: "hit@3", note: "The right passage is in the top three retrieved chunks for 84% of questions at 50K tokens." },
   { value: "200K", label: "tokens", note: "Longest document processed end to end on a single T4 GPU." },
 ];
 const DIDNT = [
@@ -154,6 +154,9 @@ export function Findings() {
         <span className="font-semibold text-ink">Next:</span> run the gate before the draft rather than after it, and
         recalibrate τR, which currently collapses to −∞.
       </motion.p>
+      <Link to="/results" className="mt-10 inline-flex items-center gap-2 font-mono text-sm text-crimson hover:underline">
+        Full results: SQuAD, LongBench, NIAH, ablation <ArrowRight className="size-4" />
+      </Link>
     </section>
   );
 }

@@ -74,6 +74,7 @@ function Sidebar() {
               {label}
             </a>
           ))}
+          <Link to="/results" className="text-[13px] text-ember transition hover:text-white">Results ↗</Link>
         </nav>
       </div>
       <div className="flex flex-col items-center gap-5">
@@ -97,6 +98,7 @@ function MobileBar() {
         {NAV.slice(1).map(({ label, id }) => (
           <a key={id} href={`#${id}`} className="text-sm text-ink/70 hover:text-ink">{label}</a>
         ))}
+        <Link to="/results" className="text-sm text-crimson">Results</Link>
       </nav>
     </header>
   );
