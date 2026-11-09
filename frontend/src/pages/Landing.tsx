@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  ArrowRight, BarChart3, FileText, Infinity as InfinityIcon, Scissors, Search,
-  Sparkles, Split, Target, Zap,
-} from "lucide-react";
+import { ArrowRight, BarChart3, Infinity as InfinityIcon, Target, Zap } from "lucide-react";
 import { HeroScene } from "@/components/landing/HeroScene";
+import { Pipeline } from "@/components/landing/Pipeline";
+import { Architecture, Closing, Findings, Footer, Problem } from "@/components/landing/Sections";
 import leaf0 from "@/assets/hero/leaf0.webp";
 import leaf2 from "@/assets/hero/leaf2.webp";
 import leaf3 from "@/assets/hero/leaf3.webp";
@@ -13,10 +12,10 @@ import leaf5 from "@/assets/hero/leaf5.webp";
 
 const NAV = [
   { label: "Home", id: "top" },
+  { label: "Problem", id: "problem" },
   { label: "How it works", id: "how-it-works" },
-  { label: "Features", id: "features" },
   { label: "Architecture", id: "architecture" },
-  { label: "Benchmarks", id: "benchmarks" },
+  { label: "Findings", id: "findings" },
 ];
 
 // TODO: real URLs once the accounts / repo exist.
@@ -25,13 +24,6 @@ const SOCIALS = [
   { label: "X", href: "#", path: "M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.67l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23Zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64Z" },
   { label: "Discord", href: "#", path: "M20.32 4.37A19.8 19.8 0 0 0 15.4 2.85a13.7 13.7 0 0 0-.63 1.29 18.4 18.4 0 0 0-5.53 0 13.7 13.7 0 0 0-.64-1.29 19.7 19.7 0 0 0-4.92 1.52C.53 9.05-.32 13.6.1 18.1a19.9 19.9 0 0 0 6.03 3.05c.49-.66.92-1.36 1.29-2.1a12.9 12.9 0 0 1-2.03-.97l.5-.39a14.2 14.2 0 0 0 12.22 0l.5.39c-.65.38-1.33.71-2.04.98.37.73.8 1.43 1.29 2.09a19.8 19.8 0 0 0 6.04-3.05c.5-5.22-.84-9.73-3.58-13.73ZM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42s.95-2.42 2.16-2.42 2.18 1.09 2.16 2.42c0 1.34-.95 2.42-2.16 2.42Zm7.97 0c-1.18 0-2.15-1.08-2.15-2.42s.95-2.42 2.15-2.42 2.18 1.09 2.16 2.42c0 1.34-.94 2.42-2.16 2.42Z" },
 ];
-
-const fadeUp = {
-  initial: { opacity: 0, y: 24 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: "-80px" },
-  transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
-};
 
 function StarMark({ className = "" }: { className?: string }) {
   return (
@@ -182,8 +174,7 @@ function Hero() {
         </motion.div>
 
         <div
-          id="benchmarks"
-          className="mt-10 grid scroll-mt-8 lg:mt-[4svh] grid-cols-1 sm:grid-cols-2 gap-y-5 rounded-2xl border border-white/70 bg-white/55 px-2 py-5 shadow-[0_20px_60px_-30px_rgba(40,10,10,0.35)] backdrop-blur-md md:grid-cols-4 md:divide-x md:divide-ink/10 lg:max-w-[1100px]"
+          className="mt-10 grid lg:mt-[4svh] grid-cols-1 sm:grid-cols-2 gap-y-5 rounded-2xl border border-white/70 bg-white/55 px-2 py-5 shadow-[0_20px_60px_-30px_rgba(40,10,10,0.35)] backdrop-blur-md md:grid-cols-4 md:divide-x md:divide-ink/10 lg:max-w-[1100px]"
         >
           {HIGHLIGHTS.map(({ icon: Icon, title, sub }) => (
             <div key={title} className="flex items-center gap-3 px-4">
@@ -196,7 +187,7 @@ function Hero() {
           ))}
         </div>
 
-        <a href="#how-it-works" className="mt-[3svh] hidden items-center gap-4 pb-[3svh] text-sm text-ink/70 lg:inline-flex">
+        <a href="#problem" className="mt-[3svh] hidden items-center gap-4 pb-[3svh] text-sm text-ink/70 lg:inline-flex">
           Scroll to explore <span className="size-3 rounded-full border border-ink/60" /> <span className="h-px w-20 bg-ink/40" />
         </a>
       </div>
@@ -204,134 +195,18 @@ function Hero() {
   );
 }
 
-function SectionHeading({ eyebrow, title, sub }: { eyebrow: string; title: string; sub: string }) {
-  return (
-    <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-crimson">{eyebrow}</p>
-      <h2 className="mt-3 font-serif text-4xl text-ink sm:text-5xl">{title}</h2>
-      <p className="mt-4 text-ink/55">{sub}</p>
-    </motion.div>
-  );
-}
-
-const FEATURES = [
-  { icon: FileText, title: "200K-token documents", body: "Feed in entire reports, books, or codebases. Documents are chunked and encoded once, then queried as often as you like." },
-  { icon: Search, title: "Semantic retrieval", body: "Every question is matched against the document's chunks, so only the most relevant passages reach the model." },
-  { icon: Split, title: "Confidence-gated routing", body: "Easy questions take the fast Mamba path. Uncertain ones are escalated to the Transformer for careful reasoning." },
-];
-
-function Features() {
-  return (
-    <section id="features" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-24 sm:px-8">
-      <SectionHeading eyebrow="Features" title="Built for documents that don't fit." sub="Standard models see a few thousand tokens. T.A.M.O. is designed to work across hundreds of thousands." />
-      <div className="mt-14 grid gap-5 md:grid-cols-3">
-        {FEATURES.map(({ icon: Icon, title, body }, i) => (
-          <motion.div key={title} {...fadeUp} transition={{ ...fadeUp.transition, delay: i * 0.1 }} className="rounded-3xl border border-white bg-white/70 p-7 shadow-[0_20px_60px_-30px_rgba(40,10,10,0.3)]">
-            <span className="grid size-11 place-items-center rounded-xl bg-ink text-ember">
-              <Icon className="size-5" />
-            </span>
-            <h3 className="mt-5 text-lg font-semibold tracking-tight text-ink">{title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-ink/60">{body}</p>
-          </motion.div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-const STEPS = [
-  { icon: FileText, title: "Long document", sub: "Up to 200K tokens" },
-  { icon: Scissors, title: "Chunk & encode", sub: "256-token chunks, Mamba-130M" },
-  { icon: Search, title: "Retrieve top-3", sub: "Cosine relevance search" },
-  { icon: Split, title: "Route", sub: "Entropy + relevance gate" },
-  { icon: Sparkles, title: "Generate answer", sub: "Mamba or TinyLlama" },
-];
-
-function HowItWorks() {
-  return (
-    <section id="how-it-works" className="mx-auto max-w-[1400px] scroll-mt-20 px-4 py-24 sm:px-8">
-      <SectionHeading eyebrow="How it works" title="A simple, efficient pipeline." sub="Retrieval with Mamba, intelligent routing, and precise generation with a Transformer." />
-      <div className="mt-14 flex flex-col items-stretch gap-3 lg:flex-row lg:items-center">
-        {STEPS.map(({ icon: Icon, title, sub }, i) => (
-          <motion.div key={title} {...fadeUp} transition={{ ...fadeUp.transition, delay: i * 0.08 }} className="flex flex-1 items-center gap-3 lg:contents">
-            <div className="flex flex-1 items-center gap-4 rounded-2xl border border-white bg-white/70 p-5 shadow-[0_20px_60px_-30px_rgba(40,10,10,0.3)]">
-              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-ink text-ember">
-                <Icon className="size-5" />
-              </span>
-              <div>
-                <p className="font-semibold text-ink">{title}</p>
-                <p className="text-xs text-ink/55">{sub}</p>
-              </div>
-            </div>
-            {i < STEPS.length - 1 && <ArrowRight className="mx-auto hidden size-5 shrink-0 text-crimson/40 lg:block" />}
-          </motion.div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Architecture() {
-  return (
-    <section id="architecture" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-24 sm:px-8">
-      <SectionHeading eyebrow="Architecture" title="Two models, one orchestrator." sub="A state space model for scale, a Transformer for precision, and a gate that decides which one a question needs." />
-      <motion.div {...fadeUp} className="mt-14 grid items-center gap-5 md:grid-cols-[1fr_auto_1fr]">
-        <div className="rounded-3xl border border-white bg-white/70 p-7">
-          <p className="text-xs font-semibold uppercase tracking-wider text-crimson">State space model</p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Mamba</h3>
-          <p className="mt-3 text-sm leading-relaxed text-ink/60">Encodes long inputs in linear time and drafts quick answers. Handles the bulk of the context cheaply.</p>
-        </div>
-        <div className="mx-auto flex flex-col items-center gap-2 rounded-3xl bg-ink px-7 py-6 text-center text-white">
-          <Split className="size-7 text-ember" />
-          <p className="font-semibold">Orchestrator</p>
-          <p className="text-xs text-white/50">entropy ≤ τH · relevance ≥ τR</p>
-        </div>
-        <div className="rounded-3xl border border-white bg-white/70 p-7">
-          <p className="text-xs font-semibold uppercase tracking-wider text-crimson">Attention model</p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Transformer</h3>
-          <p className="mt-3 text-sm leading-relaxed text-ink/60">Reasons carefully over the retrieved passages when the fast path isn't confident enough.</p>
-        </div>
-      </motion.div>
-    </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="border-t border-ink/10">
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-12 sm:px-8 md:flex-row md:items-start md:justify-between">
-        <div>
-          <Logo />
-          <p className="mt-2 max-w-xs text-sm text-ink/55">Transformer And Mamba Orchestrator: a hybrid architecture for long-context processing.</p>
-        </div>
-        <div className="grid gap-8 text-sm sm:grid-cols-2">
-          <div>
-            <p className="font-semibold text-ink">Team</p>
-            <p className="mt-2 text-ink/60">Shrinidhi Vittala R</p>
-            <p className="text-ink/60">Samiksha Das</p>
-          </div>
-          <div>
-            <p className="font-semibold text-ink">Guide</p>
-            <p className="mt-2 text-ink/60">Dr. Sridevi G M</p>
-            <p className="text-ink/60">Dept. of ISE, Jyothy Institute of Technology, Bengaluru</p>
-          </div>
-        </div>
-      </div>
-      <p className="pb-8 text-center text-xs text-ink/40">Final Year Project · © {new Date().getFullYear()} T.A.M.O.</p>
-    </footer>
-  );
-}
-
 export default function Landing() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-cream">
+    <div className="min-h-screen overflow-x-clip bg-cream">
       <Sidebar />
       <div className="lg:pl-[118px]">
         <MobileBar />
         <Hero />
-        <HowItWorks />
-        <Features />
+        <Problem />
+        <Pipeline />
         <Architecture />
+        <Findings />
+        <Closing />
         <Footer />
       </div>
     </div>
