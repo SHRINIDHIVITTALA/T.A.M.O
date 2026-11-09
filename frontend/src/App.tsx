@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Auth from "@/pages/Auth";
+import Chat from "@/pages/Chat";
 import Landing from "@/pages/Landing";
 import Results from "@/pages/Results";
 
@@ -10,6 +11,7 @@ export default function App() {
       <Route path="/results" element={<Results />} />
       <Route path="/login" element={<Auth mode="login" />} />
       <Route path="/signup" element={<Auth mode="signup" />} />
+      <Route path="/app" element={<Chat />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

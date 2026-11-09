@@ -4,7 +4,6 @@ import { motion, useMotionValueEvent, useScroll } from "framer-motion";
 // 200K tokens / 256-token chunks = 787 chunks (paper, Table 3) → 34-wide grid, last row partial.
 const COLS = 34;
 const CHUNKS = 787;
-const ROWS = Math.ceil(CHUNKS / COLS);
 const CELL = 10;
 const GAP = 3;
 const TOP3 = [211, 437, 618];
@@ -23,13 +22,13 @@ const STEPS = [
   { title: "Answer", body: "Confident drafts return on the fast Mamba path. Escalated questions are answered by TinyLlama-1.1B, reading only the three passages." },
 ];
 
-function ChunkGrid({ step }: { step: number }) {
+export function ChunkGrid({ step, hits = TOP3, count = CHUNKS }: { step: number; hits?: number[]; count?: number }) {
   const w = COLS * (CELL + GAP) - GAP;
-  const h = ROWS * (CELL + GAP) - GAP;
+  const h = Math.ceil(count / COLS) * (CELL + GAP) - GAP;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="Document split into 787 chunks">
-      {Array.from({ length: CHUNKS }, (_, i) => {
-        const hit = TOP3.includes(i);
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label={`Document split into ${count} chunks`}>
+      {Array.from({ length: count }, (_, i) => {
+        const hit = hits.includes(i);
         const x = (i % COLS) * (CELL + GAP) - (step === 0 ? GAP / 2 : 0);
         const y = Math.floor(i / COLS) * (CELL + GAP) - (step === 0 ? GAP / 2 : 0);
         let fill = "#0B0F14";

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Eye, EyeOff } from "lucide-react";
 import mascot from "@/assets/hero/mascot.webp";
@@ -37,12 +37,12 @@ function Field({ label, type = "text", autoComplete, minLength }: { label: strin
 
 export default function Auth({ mode }: { mode: Mode }) {
   const c = COPY[mode];
-  const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
 
-  // UI only for now: real Supabase auth comes with the backend.
+  // UI only for now: any details go straight to the demo. Real Supabase auth comes with the backend.
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    navigate("/app");
   };
 
   return (
@@ -88,11 +88,6 @@ export default function Auth({ mode }: { mode: Mode }) {
               {c.cta} <ArrowRight className="size-4" />
             </button>
 
-            {submitted && (
-              <p role="status" className="border-l-2 border-ember pl-3 text-sm text-ink/70">
-                Accounts aren't connected yet. Sign-in will work once the backend is live.
-              </p>
-            )}
           </form>
 
           <p className="mt-8 text-sm text-ink/60">
