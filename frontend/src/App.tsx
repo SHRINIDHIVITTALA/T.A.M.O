@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import Auth from "@/pages/Auth";
 import Landing from "@/pages/Landing";
 import Results from "@/pages/Results";
 
@@ -7,6 +8,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/results" element={<Results />} />
+      <Route path="/login" element={<Auth mode="login" />} />
+      <Route path="/signup" element={<Auth mode="signup" />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
